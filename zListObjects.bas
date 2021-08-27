@@ -1,20 +1,36 @@
-Attribute VB_Name = "zListObjects"
-Function deleteRowsByValue(tbl As ListObject, colName As String, val As Variant)
-    Dim colChange As ListColumn
-    Set colChange = tbl.ListColumns(colName)
+'PURPOSE: Searches a workbook for a table with provided name and returns the table as ListObject.
+'ARGUMENTS: Table name to get, Optional workbook to search in. Defaults to ThisWorkbook.
+'RETURNS: ListObject
+Function getListObject(tblName As String, Optional wbk As Workbook) As ListObject
     
-    'I am aware that loops exist, but looping through ListRows and deleting one by one is THE PITS.
-    'IT CAN TAKE ABSOLUTELY FOREVER....LIKE, MINUTES IN LARGE DATA SETS.
-    'so just filter it out, delete it, and move on.
+    Dim sht As Worksheet
+    Dim loReturn As ListObject
     
-    'This function only safe on sheets with one table... not the greatest
+    If wbk Is Nothing Then
+        Set wbk = ThisWorkbook
+    End If
     
-    tbl.Range.AutoFilter field:=colChange.Index, Criteria1:=val
-    tbl.DataBodyRange.EntireRow.Delete
-    tbl.Range.AutoFilter field:=colChange.Index
+    If tblName = "" Then
+        Set getListObject = Nothing
+        Exit Function
+    End If
+    
+    On Error Resume Next
+    For Each sht In wbk.Sheets
+        Set loReturn = sht.ListObjects(tblName)
+        If Not loReturn Is Nothing Then 'WE FOUND IT.
+            Exit For
+        End If
+    Next sht
+    On Error GoTo 0
+    
+    Set getListObject = loReturn 'either is a table, or Nothing.
     
 End Function
 
+'PURPOSE: Determines if a column exists in a table.
+'ARGUMENTS: Table to check, column name to search for.
+'RETURNS: true or false
 Function columnExists(tbl As ListObject, colName As String) As Boolean
     Dim col As ListColumn
     On Error GoTo jump
@@ -23,10 +39,12 @@ Function columnExists(tbl As ListObject, colName As String) As Boolean
 jump:
 End Function
 
-Function getTableValue(tbl As ListObject, fieldSearch As String, itemSearch As Variant, fieldGet As String) 'this function, I think, could be used universally.
-
-    'TODO 8/12/2020 -
-    'make this more efficient by reading the listcolumns into arrays, then looping through those in memory.
+'PURPOSE: Performs a lookup in a table: searches for a value in one field, returns the value on the same record in another field. Returns value at first occurrence top-to-bottom.
+'ARGUMENTS: Table to search, column name to search in, value to search for, field with desired output.
+'RETURNS: Variant
+Function getTableValue(tbl As ListObject, fieldSearch As String, itemSearch As Variant, fieldGet As String)
+                    
+    'Note - this could be more efficient by reading the values of the ListColumns into arrays, then looping through those in memory.
 
     Dim rng As Range
     Dim colSearch As ListColumn
@@ -52,6 +70,10 @@ jump:
     
 End Function
 
+                        
+'PURPOSE: Finds a value in one column and changes the value in a different column on the same record.
+'ARGUMENTS: Table to modify, column name to search in, value to search for, field to modify, value to set.
+'RETURNS: no return value.
 Function setTableValue(tbl As ListObject, fieldSearch As String, itemSearch As Variant, fieldSet As String, valSet As Variant) 'this function, I think, could be used universally.
 
     Dim rng As Range
@@ -74,7 +96,10 @@ Function setTableValue(tbl As ListObject, fieldSearch As String, itemSearch As V
 jump:
     
 End Function
-
+                            
+'PURPOSE: Determines if all values in a ListColumn are numeric.
+'ARGUMENTS: Table to check, column name to analyze.
+'RETURNS: true or false.
 Function listColumnIsNumeric(lo As ListObject, colName As String) As Boolean
     Dim lc As ListColumn
     Dim arVals() As Variant
@@ -103,7 +128,10 @@ Function listColumnIsNumeric(lo As ListObject, colName As String) As Boolean
     listColumnIsNumeric = rtn
 
 End Function
-
+                            
+'PURPOSE: creates a ListObject with a given name on a specific worksheet using the cells around A1. ASSUMES THE DATA BEGINS IN CELL A1! Does nothing if table already exists.
+'ARGUMENTS: sheet holding the data, desired table name.
+'RETURNS: new ListObject; nothing if cell A1 is blank.
 Function makeListObject(sht As Worksheet, tblName As String) As ListObject
     
     'REQUIRED: DATA MUST START IN CELL A1!!!
@@ -126,58 +154,26 @@ Function makeListObject(sht As Worksheet, tblName As String) As ListObject
     
     If loRtn Is Nothing Then
         Set loRtn = sht.ListObjects.Add(xlSrcRange, rngTable, , xlYes)
+        loRtn.TableStyle = ""
+        loRtn.Name = tblName
     End If
-    
-    loRtn.TableStyle = ""
-    loRtn.Name = tblName
     
     Set makeListObject = loRtn
     
 End Function
 
-Function getListObject(tblName As String, Optional wbk As Workbook) As ListObject
-    'WHY THIS, YOU MIGHT ASK?
-    'because ListObject is a child of Worksheet, not workbook
-    'DESPITE THE FACT THAT ALL LISTOBJECTS MUST HAVE UNIQUE NAMES.
-    'YOU HAVE TO LOOP THROUGH ALL THE SHEETS JUST TO FIND SOMETHING THAT IS ALREADY UNIQUE.
-    'so I'm solving that problem permanently.
-    
-    Dim sht As Worksheet
-    Dim loReturn As ListObject
-    
-    If wbk Is Nothing Then
-        Set wbk = ThisWorkbook
-    End If
-    
-    If tblName = "" Then
-        Set getListObject = Nothing
-        Exit Function
-    End If
-    
-    On Error Resume Next
-    For Each sht In wbk.Sheets
-        Set loReturn = sht.ListObjects(tblName)
-        If Not loReturn Is Nothing Then 'WE FOUND IT.
-            Exit For
-        End If
-    Next sht
-    On Error GoTo 0
-    
-    Set getListObject = loReturn 'either is a table, or Nothing.
-    
-End Function
-
+'PURPOSE: Appends the data from one table to the end of the matching columns of another table. Optionally adds new columns if columns in the source table are not found.
+'ARGUMENTS: Table to read from, table to append data to, optional bool to add new columns to the destination table if missing.
+'RETURNS: No return value.
 Function mergeTables(loSrc As ListObject, loDest As ListObject, Optional NewColIfNotFound As Boolean)
 
-    'nested loops to bring in data for each matching column.
-    'option to create new column in loDest if not found in source.
-    'THIS DOES NOT HAVE OPTIMIZATION BUILT-IN...turn of screenupdating/calculation OUTSIDE this function. this is just the function.
+    'THIS DOES NOT HAVE OPTIMIZATION BUILT-IN...turn of ScreenUpdating/Calculation OUTSIDE this function. this is just the function.
     
     Dim colSrc As ListColumn
     Dim colDest As ListColumn
     Dim rngPost As Range
     Dim x, y As Integer
-    
+                                            
     x = loDest.ListRows.Count
     
     For Each colDest In loDest.ListColumns
@@ -209,4 +205,20 @@ Function mergeTables(loSrc As ListObject, loDest As ListObject, Optional NewColI
     End If
 
 End Function
-
+                                                    
+'PURPOSE: Filters a ListObject to a specified value and deletes the *ENTIRE SHEET ROW* at those values.
+'NOTE: This is not a safe function if you have ANY data outside your table on the same worksheet!
+'ARGUMENTS: ListObject to modify, Column Name to search, value to delete.
+'RETURNS: no return value.
+Function deleteRowsByValue(tbl As ListObject, colName As String, val As Variant)
+    Dim colChange As ListColumn
+    Set colChange = tbl.ListColumns(colName)
+    
+    'I am aware that loops exist, but looping through ListRows and deleting one by one can take MINUTES in large data sets.
+    'so just filter it out, delete it, and move on.
+    
+    tbl.Range.AutoFilter field:=colChange.Index, Criteria1:=val
+    tbl.DataBodyRange.EntireRow.Delete
+    tbl.Range.AutoFilter field:=colChange.Index
+    
+End Function
