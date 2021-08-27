@@ -29,7 +29,7 @@ End Sub
 ---
 **getListObject**
 
-`getListObject(tblName As String, Optional wbk As Workbook) As ListObject`
+`getListObject(String, [ Workbook ]) As ListObject`
 
 *Purpose*<br/>
 Searches a workbook for a table with provided name and returns the table as ListObject.
@@ -43,7 +43,7 @@ Optional `Workbook` to search within; defaults to ThisWorkbook.
 ---
 **columnExists**
 
-`columnExists(tbl As ListObject, colName As String) As Boolean`
+`columnExists(ListObject, String) As Boolean`
 
 *Purpose*<br/>
 Determines if a column exists in a table.
@@ -57,7 +57,7 @@ Determines if a column exists in a table.
 ---
 **getTableValue**
 
-`getTableValue(tbl As ListObject, fieldSearch As String, itemSearch As Variant, fieldGet As String)`
+`getTableValue(ListObject, String, Variant, String)`
 
 *Purpose*<br/>
 Performs a lookup in a table: searches for a value in one field, returns the value on the same record in another field. Returns value at first occurrence top-to-bottom.
@@ -70,3 +70,85 @@ Performs a lookup in a table: searches for a value in one field, returns the val
 
 *Returns*<br>
 `Variant` value from table
+
+---
+**setTableValue**
+
+`setTableValue(ListObject, String, Variant, String, Variant)`
+
+*Purpose*<br/>
+Finds a value in one column and changes the value in a different column on the same record. Modifies record of first occurrence, top-to-bottom.
+
+*Arguments*<br/>
+`ListObject` table to search <br>
+`String` column name to search in <br>
+`Variant` value to search for in first column <br>
+`String` column name to set new value in <br>
+`Variant` new value to set <br>
+
+*Returns*<br>
+No return value.
+
+---
+**listColumnIsNumeric**
+
+`listColumnIsNumeric(ListObject, String)`
+
+*Purpose*<br/>
+Determines if all values in a ListColumn are numeric.
+
+*Arguments*<br/>
+`ListObject` table to search <br>
+`String` name of ListColumn to analyze <br>
+
+*Returns*<br>
+`Boolean`
+
+---
+**makeListObject**
+
+`makeListObject(Worksheet, String)`
+
+*Purpose*<br/>
+Creates a table with a given name on a specific worksheet starting in cell A1. Assumes that the data is unbroken in Column A and Row 1 and begins in A1. Does nothing if table already exists.
+
+*Arguments*<br/>
+`Worksheet` sheet with data for table <br>
+`String` name of new table <br>
+
+*Returns*<br>
+`ListObject`
+
+---
+**mergeTables**
+
+`mergeTables(ListObject, ListObject, [ Boolean ])`
+
+*Purpose*<br/>
+Appends the data from all columns in one table to the end of the matching columns of another table. Optionally adds new columns if columns in the source table are not found.
+
+*Arguments*<br/>
+`ListObject` table to read from <br>
+`ListObject` table to append value into <br>
+Optional `Boolean` create new columns if column not found.
+
+*Returns*<br>
+No return value.
+
+---
+**deleteRowsByValue**
+
+`deleteRowsByValue(ListObject, String, Variant)`
+
+*Purpose*<br/>
+Filters a ListObject to a specified value and deletes the **entire sheet row** at those values.
+**This is not a safe function if there is anything other than the table on the table's worksheet.**
+
+*Arguments*<br/>
+`ListObject` table to delete rows from <br>
+`String` column with value to delete <br>
+`Variant` value in records to delete <br>
+
+*Returns*<br>
+No return value.
+
